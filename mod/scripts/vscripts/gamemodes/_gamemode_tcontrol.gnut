@@ -1,0 +1,85 @@
+global function GamemodeTControl_Init
+
+
+void function GamemodeTControl_Init()
+{
+	SetShouldUseRoundWinningKillReplay( true )
+
+	AddCallback_GameStateEnter( eGameState.WinnerDetermined, OnWinnerDetermined )
+
+    thread TControlScoreThink()
+}
+
+
+void function TControlScoreThink()
+{
+    // wait until game has started
+    while (GetGameState() < eGameState.Playing)
+    {
+        WaitFrame()
+    }
+    // loop until game ends
+    while (GetGameState() == eGameState.Playing)
+    {
+        table<int, int> teamTitanTable = {}
+        // count num of titans on each team (auto titans don't count)
+        foreach ( entity player in GetPlayerArray() )
+        {
+            if (player.IsTitan())
+            {
+                // give scoreboard score :)
+                player.SetPlayerGameStat( PGS_ASSAULT_SCORE, player.GetPlayerGameStat( PGS_ASSAULT_SCORE ) + 1 )
+
+                int currentTitanCount = 0
+                try
+                {
+                    // get current team titan count 
+                    // iirc this throws an exception if it hasnt been set ever?
+                    currentTitanCount = teamTitanTable[player.GetTeam()]
+                }
+                catch (exception) { }
+            
+                teamTitanTable[player.GetTeam()] <- currentTitanCount++
+            }
+        }
+
+        // increment score for each team based on number of titans
+
+        // iterate through teams and check which has highest number of titans
+        int highestNumTitans = -1
+        int highestNumTitansTeam = -1
+        int secondHighestNumTitans = -1
+        // TODO: replace 10 with a variable
+        for(int team = 0; team < 10; team++)
+        {
+            try 
+            {
+                if ( highestNumTitans < teamTitanTable[team] )
+                {
+                    highestNumTitans = teamTitanTable[team]
+                    highestNumTitansTeam = team
+                }
+
+                if ( secondHighestNumTitans < teamTitanTable[team] && highestNumTitans != teamTitanTable[team] )
+                {
+                    secondHighestNumTitans = teamTitanTable[team]
+                }
+            }
+            catch (exception)
+            {
+
+            }
+        }
+
+        // give score to team with most titans
+        if (highestNumTitansTeam != -1)
+            AddTeamScore( highestNumTitansTeam, highestNumTitans - secondHighestNumTitans )
+
+        wait 1.0
+    }
+}
+
+void function OnWinnerDetermined()
+{
+
+}
